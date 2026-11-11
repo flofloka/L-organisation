@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GRIND">
+<meta name="theme-color" content="#0b0b10">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>GRIND</title>
+<style>
+:root{
+  --bg:#0b0b10; --panel:#15151d; --panel2:#1d1d28; --line:#2a2a38;
+  --txt:#ecebf3; --mute:#8b8a9c; --acid:#c8ff3e; --acid-d:#9ccc1f;
+  --mag:#ff3e8a; --gold:#ffc23e; --red:#ff5a4e; --blue:#5ec8ff;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;padding-top:var(--sat);padding-bottom:calc(74px + var(--sab))}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input,textarea{font:inherit;font-size:16px;color:var(--txt)}
+.wrap{max-width:520px;margin:0 auto;padding:0 16px}
+
+/* HUD */
+.hud{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 80%,transparent);padding:12px 0 14px}
+.hud-row{display:flex;align-items:center;gap:10px}
+.lvl{font-family:var(--mono);font-weight:800;font-size:13px;background:var(--acid);color:#000;padding:4px 8px;border-radius:4px;letter-spacing:.5px}
+.xpbar{flex:1;height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--acid-d),var(--acid));transition:width .6s}
+.chip{font-family:var(--mono);font-weight:700;font-size:14px;display:flex;align-items:center;gap:4px;padding:4px 8px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.chip.gold{color:var(--gold)} .chip.mag{color:var(--mag)} .chip.dead{color:var(--mute)}
+.gear{font-size:20px;padding:2px 4px;color:var(--mute)}
+.xptxt{font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:4px;text-align:right}
+
+h1{font-size:26px;margin:6px 0 2px;letter-spacing:-.5px}
+.sub{color:var(--mute);font-size:14px;margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.banner{border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:14px;display:flex;gap:10px;align-items:center}
+.banner.warn{background:rgba(255,194,62,.1);border:1px solid rgba(255,194,62,.35);color:var(--gold)}
+.banner.info{background:rgba(94,200,255,.08);border:1px solid rgba(94,200,255,.3);color:var(--blue)}
+.banner b{color:var(--txt)}
+
+/* Tasks */
+.task{display:flex;align-items:center;gap:12px;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;transition:.2s}
+.task.done{border-color:rgba(200,255,62,.35);background:rgba(200,255,62,.05)}
+.task.done .ttxt{color:var(--mute);text-decoration:line-through}
+.task.cur{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+.box{width:30px;height:30px;flex:none;border:2px solid var(--line);border-radius:8px;display:grid;place-items:center;font-weight:900;color:#000;transition:.15s}
+.task.done .box{background:var(--acid);border-color:var(--acid)}
+.ttxt{flex:1;word-break:break-word}
+.tag{font-family:var(--mono);font-size:10px;color:var(--blue);display:block;letter-spacing:.5px;margin-bottom:2px}
+.focusbtn{font-size:12px;font-family:var(--mono);color:var(--mute);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
+.task.cur .focusbtn{color:var(--blue);border-color:var(--blue)}
+
+.btn{display:block;width:100%;padding:15px;border-radius:12px;font-weight:800;font-size:16px;text-align:center;letter-spacing:.3px}
+.btn.primary{background:var(--acid);color:#000}
+.btn.primary:active{transform:scale(.98)}
+.btn.ghost{background:var(--panel2);border:1px solid var(--line);color:var(--txt)}
+.btn.danger{background:rgba(255,90,78,.12);border:1px solid rgba(255,90,78,.4);color:var(--red)}
+.btn:disabled{opacity:.35}
+.row{display:flex;gap:8px}
+
+.progress{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.ring{width:64px;height:64px;flex:none}
+.ptxt b{font-family:var(--mono);font-size:22px;display:block}
+.ptxt span{color:var(--mute);font-size:13px}
+
+/* Editor */
+.slot{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.slot .n{font-family:var(--mono);color:var(--mute);width:22px;text-align:right;font-size:13px}
+.slot input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 12px;outline:none}
+.slot input:focus{border-color:var(--acid)}
+.slot.lockedslot input{opacity:.35}
+.lockline{display:flex;align-items:center;gap:10px;padding:14px;border:1px dashed var(--line);border-radius:12px;margin-bottom:8px;color:var(--mute)}
+
+/* Summary */
+.big{font-family:var(--mono);font-size:44px;font-weight:900;color:var(--acid);text-align:center;margin:6px 0}
+.lines{font-family:var(--mono);font-size:13px;color:var(--mute)}
+.lines div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)}
+.lines div:last-child{border:0}
+.lines b{color:var(--txt)}
+
+/* Calendar */
+.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.calhead button{font-size:22px;padding:4px 12px;color:var(--mute)}
+.calhead b{text-transform:capitalize}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.dow{font-family:var(--mono);font-size:11px;color:var(--mute);text-align:center;padding-bottom:4px}
+.cell{aspect-ratio:1;border-radius:8px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;position:relative}
+.cell.empty{background:none;border:0}
+.cell.full{background:var(--acid);color:#000;border-color:var(--acid);font-weight:800}
+.cell.part{background:rgba(255,194,62,.2);border-color:rgba(255,194,62,.5)}
+.cell.zero{background:rgba(255,90,78,.15);border-color:rgba(255,90,78,.4)}
+.cell.today{outline:2px solid var(--txt);outline-offset:1px}
+.cell.sel{box-shadow:0 0 0 2px var(--blue)}
+.cell small{font-size:9px;opacity:.8}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+/* Shop */
+.item{display:flex;align-items:center;gap:14px}
+.item .ic{font-size:28px;width:48px;height:48px;display:grid;place-items:center;background:var(--panel2);border-radius:12px;flex:none}
+.item .info{flex:1}
+.item .info b{display:block}
+.item .info span{font-size:13px;color:var(--mute)}
+.buy{font-family:var(--mono);font-weight:800;background:var(--gold);color:#000;padding:10px 12px;border-radius:10px;white-space:nowrap}
+.buy:disabled{background:var(--panel2);color:var(--mute)}
+
+/* Achievements */
+.ach{display:flex;gap:12px;align-items:center;padding:12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);margin-bottom:8px}
+.ach .ic{font-size:26px;width:44px;height:44px;display:grid;place-items:center;border-radius:10px;background:var(--panel2);flex:none}
+.ach.lock{opacity:.4}.ach.lock .ic{filter:grayscale(1)}
+.ach.got{border-color:rgba(255,194,62,.4)}
+.ach b{display:block}.ach span{font-size:13px;color:var(--mute)}
+.ach .rw{font-family:var(--mono);font-size:12px;color:var(--gold);margin-left:auto;white-space:nowrap}
+
+/* Tabbar */
+.tabbar{position:fixed;bottom:0;left:0;right:0;z-index:10;background:rgba(15,15,21,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:var(--sab)}
+.tabbar .in{max-width:520px;margin:0 auto;display:flex}
+.tab{flex:1;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--mute);position:relative}
+.tab .i{font-size:20px;line-height:1}
+.tab.on{color:var(--acid)}
+.tab .dot{position:absolute;top:6px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:var(--mag)}
+
+/* Modal / toast */
+.modal{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:calc(16px + var(--sab))}
+.sheet{width:100%;max-width:520px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;animation:up .25s ease}
+.sheet h2{margin:0 0 6px;font-size:20px}
+.sheet p{color:var(--mute);margin:0 0 16px;font-size:15px}
+.sheet .btn{margin-top:8px}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+.toasts{position:fixed;top:calc(var(--sat) + 10px);left:0;right:0;z-index:40;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.toast{background:#1f1a08;border:1px solid var(--gold);color:var(--txt);padding:10px 14px;border-radius:12px;display:flex;gap:10px;align-items:center;max-width:92%;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:drop .35s ease}
+.toast .ic{font-size:24px}
+.toast small{display:block;color:var(--gold);font-family:var(--mono);font-size:10px;letter-spacing:1px}
+@keyframes drop{from{transform:translateY(-30px);opacity:0}}
+textarea.dump{width:100%;height:140px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;font-family:var(--mono);font-size:12px}
+.guide ol{padding-left:20px;margin:8px 0;color:var(--txt);font-size:14px}
+.guide li{margin-bottom:6px}
+.guide code{font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:13px}
+.section-t{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;color:var(--mute);margin:20px 0 8px;text-transform:uppercase}
+.muted{color:var(--mute);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hud" id="hud"></div>
+  <main id="main"></main>
+</div>
+<nav class="tabbar"><div class="in" id="tabs"></div></nav>
+<div class="toasts" id="toasts"></div>
+<div id="modalRoot"></div>
+
+<script>
+/* =========================================================
+   GRIND — quêtes du jour. Données 100 % locales (localStorage).
+   ========================================================= */
+const KEY = 'grind_v1';
+const DAY_START_HOUR = 4;          // la journée "logique" commence à 4h (planifier à 1h du mat' = toujours pour demain)
+const PTS_TASK = 10, PTS_FULL = 25, PTS_STREAK_STEP = 5, STREAK_CAP = 10;
+const MIN_TASKS_STREAK = 3;        // une journée doit avoir au moins 3 tâches pour compter dans la série
+const MAX_SLOTS = 8;
+const SLOT_COST = {5:200, 6:400, 7:700, 8:1100};
+const CHECKIN_MIN = 45;            // délai avant que l'app redemande "toujours sur cette tâche ?"
+
+/* ---------- dates ---------- */
+const pad = n => String(n).padStart(2,'0');
+const fmt = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); };
+const addDays = (s,n) => { const d = parse(s); d.setDate(d.getDate()+n); return fmt(d); };
+function nowDate(){ return window.__NOW ? new Date(window.__NOW) : new Date(); }
+function today(){ const d = nowDate(); d.setHours(d.getHours()-DAY_START_HOUR); return fmt(d); }
+const tomorrow = () => addDays(today(),1);
+const MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const DAYS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+const nice = s => { const d = parse(s); return DAYS[d.getDay()]+' '+d.getDate()+' '+MONTHS[d.getMonth()]; };
+const uid = () => Math.random().toString(36).slice(2,9);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- état ---------- */
+function defaultState(){
+  return { v:1, days:{}, wallet:0, xp:0, slots:4, purchases:0,
+    stats:{tasksDone:0, fullDays:0, bestStreak:0, plannedDays:0},
+    achievements:{}, current:null, created: today() };
+}
+let S;
+function load(){
+  try { const raw = localStorage.getItem(KEY); S = raw ? Object.assign(defaultState(), JSON.parse(raw)) : defaultState(); }
+  catch(e){ S = defaultState(); }
+  S.stats = Object.assign(defaultState().stats, S.stats||{});
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){ toast('⚠️','ERREUR','Sauvegarde impossible'); } }
+
+/* ---------- niveaux ---------- */
+const xpFor = L => 50*(L-1)*L;               // niv2=100, niv3=300, niv4=600, niv5=1000…
+function level(xp){ let L=1; while(xp >= xpFor(L+1)) L++; return L; }
+
+/* ---------- série ---------- */
+function currentStreak(){
+  const t = S.days[today()];
+  if (t && t.closed) return t.streak;
+  const y = S.days[addDays(today(),-1)];
+  return (y && y.closed) ? y.streak : 0;
+}
+
+/* ---------- clôture d'une journée ---------- */
+function closeDay(date, auto){
+  const day = S.days[date];
+  if (!day || day.closed || !day.lockedAt) return null;
+  const n = day.tasks.length, done = day.tasks.filter(t=>t.done).length;
+  const full = n>0 && done===n;
+  const eligible = !day.sameDay && n >= MIN_TASKS_STREAK;
+  const prev = S.days[addDays(date,-1)];
+  const prevStreak = (prev && prev.closed) ? prev.streak : 0;
+  const streak = (full && eligible) ? prevStreak+1 : 0;
+  let base = done*PTS_TASK, bonusFull = full ? PTS_FULL : 0;
+  let bonusStreak = (full && eligible) ? PTS_STREAK_STEP*Math.min(streak,STREAK_CAP) : 0;
+  let pts = base + bonusFull + bonusStreak;
+  if (day.sameDay) pts = Math.floor(pts/2);
+  Object.assign(day, {closed:true, auto:!!auto, done, pct: n?Math.round(done/n*100):0, full, streak,
+    pts, breakdown:{base,bonusFull,bonusStreak,half:!!day.sameDay}, prevStreak});
+  S.wallet += pts; S.xp += pts;
+  S.stats.tasksDone += done;
+  if (full) S.stats.fullDays++;
+  if (!day.sameDay) S.stats.plannedDays++;
+  S.stats.bestStreak = Math.max(S.stats.bestStreak, streak);
+  if (S.current && S.current.date===date) S.current = null;
+  return day;
+}
+function autoClose(){
+  const t = today();
+  Object.keys(S.days).sort().forEach(d => {
+    if (d >= t) return;
+    const day = S.days[d];
+    if (day.lockedAt && !day.closed) closeDay(d, true);
+    else if (!day.lockedAt) delete S.days[d];    // brouillon jamais verrouillé
+  });
+}
+
+/* ---------- succès ---------- */
+const ACH = [
+  {id:'first',   ic:'🗡️', name:'Premier sang',      desc:'Accomplir ta première tâche',        rw:20,  ok:()=>S.stats.tasksDone>=1},
+  {id:'lock1',   ic:'🔒', name:'Pacte scellé',       desc:'Verrouiller ta première liste',      rw:20,  ok:()=>Object.values(S.days).some(d=>d.lockedAt)},
+  {id:'full1',   ic:'💯', name:'Run parfait',        desc:'Une journée à 100 %',                rw:50,  ok:()=>S.stats.fullDays>=1},
+  {id:'full10',  ic:'👑', name:'Speedrunner',        desc:'10 journées à 100 %',                rw:150, ok:()=>S.stats.fullDays>=10},
+  {id:'full30',  ic:'🏆', name:'Any% maîtrisé',      desc:'30 journées à 100 %',                rw:400, ok:()=>S.stats.fullDays>=30},
+  {id:'s3',      ic:'🔥', name:'Combo x3',           desc:'Série de 3 jours parfaits',          rw:50,  ok:()=>S.stats.bestStreak>=3},
+  {id:'s7',      ic:'⚡', name:'Semaine sans faute', desc:'Série de 7 jours parfaits',          rw:150, ok:()=>S.stats.bestStreak>=7},
+  {id:'s14',     ic:'🌋', name:'Inarrêtable',        desc:'Série de 14 jours parfaits',         rw:300, ok:()=>S.stats.bestStreak>=14},
+  {id:'s30',     ic:'🐉', name:'Légende',            desc:'Série de 30 jours parfaits',         rw:800, ok:()=>S.stats.bestStreak>=30},
+  {id:'t25',     ic:'⛏️', name:'Farmeur',            desc:'25 tâches accomplies',               rw:50,  ok:()=>S.stats.tasksDone>=25},
+  {id:'t100',    ic:'🪓', name:'Grinder',            desc:'100 tâches accomplies',              rw:150, ok:()=>S.stats.tasksDone>=100},
+  {id:'t500',    ic:'⚒️', name:'No-life assumé',     desc:'500 tâches accomplies',              rw:600, ok:()=>S.stats.tasksDone>=500},
+  {id:'plan7',   ic:'🌙', name:'Stratège nocturne',  desc:'7 journées planifiées la veille',     rw:80,  ok:()=>S.stats.plannedDays>=7},
+  {id:'plan30',  ic:'🗺️', name:'Maître du plan',     desc:'30 journées planifiées la veille',    rw:250, ok:()=>S.stats.plannedDays>=30},
+  {id:'buy1',    ic:'🛒', name:'Premier loot',       desc:'Acheter ton premier emplacement',     rw:30,  ok:()=>S.purchases>=1},
+  {id:'slots8',  ic:'🎒', name:'Inventaire plein',   desc:'Débloquer les 8 emplacements',        rw:300, ok:()=>S.slots>=MAX_SLOTS},
+  {id:'lv5',     ic:'⭐', name:'Niveau 5',           desc:'Atteindre le niveau 5',              rw:100, ok:()=>level(S.xp)>=5},
+  {id:'lv10',    ic:'🌟', name:'Niveau 10',          desc:'Atteindre le niveau 10',             rw:300, ok:()=>level(S.xp)>=10},
+  {id:'rich',    ic:'💰', name:'Trésor',             desc:'Avoir 1000 points en poche',         rw:100, ok:()=>S.wallet>=1000},
+];
+function checkAch(){
+  let changed = true;
+  while (changed){            // un succès peut en débloquer un autre (points → niveau)
+    changed = false;
+    for (const a of ACH){
+      if (!S.achievements[a.id] && a.ok()){
+        S.achievements[a.id] = today(); S.wallet += a.rw; S.xp += a.rw;
+        toast(a.ic,'SUCCÈS DÉBLOQUÉ',a.name+'  +'+a.rw); changed = true;
+      }
+    }
+  }
+}
+
+/* ---------- toasts & modales ---------- */
+function toast(ic, small, text){
+  const el = document.createElement('div'); el.className='toast';
+  el.innerHTML = `<span class="ic">${ic}</span><div><small>${esc(small)}</small>${esc(text)}</div>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>{ el.style.transition='.4s'; el.style.opacity='0'; setTimeout(()=>el.remove(),400); }, 3200);
+}
+function modal(html){ document.getElementById('modalRoot').innerHTML = `<div class="modal" onclick="if(event.target===this)closeModal()"><div class="sheet">${html}</div></div>`; }
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+function confirmBox(title, text, okLabel, onOk, danger){
+  modal(`<h2>${title}</h2><p>${text}</p>
+    <button class="btn ${danger?'danger':'primary'}" id="okb">${okLabel}</button>
+    <button class="btn ghost" onclick="closeModal()">Annuler</button>`);
+  document.getElementById('okb').onclick = () => { closeModal(); onOk(); };
+}
+
+/* ---------- actions ---------- */
+function commit(){ checkAch(); save(); render(); }
+function toggleTask(id){
+  const day = S.days[today()]; if (!day || day.closed) return;
+  const t = day.tasks.find(x=>x.id===id); t.done = !t.done;
+  if (t.done && S.current && S.current.id===id) S.current = null;
+  if (navigator.vibrate) navigator.vibrate(t.done?15:5);
+  commit();
+}
+function setCurrent(id){
+  if (S.current && S.current.id===id) S.current = null;
+  else S.current = {id, date: today(), since: Date.now(), lastCheck: Date.now()};
+  commit();
+}
+function ensureDraft(date, sameDay){
+  if (!S.days[date]) S.days[date] = {tasks:[], lockedAt:null, sameDay:!!sameDay};
+  const d = S.days[date];
+  if (!d.lockedAt) d.sameDay = (date === today());   // une liste pour aujourd'hui = toujours "jour même"
+  while (d.tasks.length < S.slots) d.tasks.push({id:uid(), text:'', done:false});
+  return d;
+}
+function editSlot(date, i, val){ S.days[date].tasks[i].text = val; save(); updateLockBtn(date); }
+function filledCount(date){ return (S.days[date]?.tasks||[]).filter(t=>t.text.trim()).length; }
+function updateLockBtn(date){
+  const b = document.getElementById('lockBtn'); if (!b) return;
+  const n = filledCount(date); b.disabled = n===0;
+  const w = document.getElementById('lockWarn');
+  if (w) w.style.display = (n>0 && n<MIN_TASKS_STREAK) ? 'block' : 'none';
+}
+function lockDay(date){
+  const n = filledCount(date);
+  const warn = n < MIN_TASKS_STREAK ? `<br><br><b style="color:var(--gold)">Moins de ${MIN_TASKS_STREAK} tâches : cette journée ne comptera pas pour la série.</b>` : '';
+  confirmBox('Verrouiller la liste ?', `${n} tâche${n>1?'s':''} pour ${nice(date)}. Une fois verrouillée, <b>impossible de modifier</b>. Si tu ne fais pas tout, ta série tombe à zéro.${warn}`,
+    '🔒 Verrouiller', () => {
+      const d = S.days[date];
+      d.tasks = d.tasks.filter(t=>t.text.trim()).map(t=>({id:t.id, text:t.text.trim(), done:false}));
+      d.lockedAt = Date.now();
+      d.sameDay = (date === today());
+      if (navigator.vibrate) navigator.vibrate([20,40,20]);
+      toast('🔒','LISTE VERROUILLÉE', nice(date));
+      commit();
+    });
+}
+function closeToday(){
+  const day = S.days[today()];
+  const left = day.tasks.filter(t=>!t.done).length;
+  const txt = left ? `Il reste <b>${left} tâche${left>1?'s':''} non cochée${left>1?'s':''}</b>. Ta série retombera à zéro.` : 'Toutes les tâches sont faites. On encaisse.';
+  confirmBox('Clôturer la journée ?', txt+' Les cases seront figées.', 'Clôturer', () => {
+    const d = closeDay(today(), false);
+    commit(); showSummary(d);
+  }, left>0);
+}
+function showSummary(d){
+  const b = d.breakdown;
+  modal(`<h2>${d.full?'💯 Journée parfaite':'Journée clôturée'}</h2>
+    <div class="big">+${d.pts}</div>
+    <div class="lines">
+      <div><span>Tâches (${d.done} × ${PTS_TASK})</span><b>${b.base}</b></div>
+      ${b.bonusFull?`<div><span>Bonus 100 %</span><b>+${b.bonusFull}</b></div>`:''}
+      ${b.bonusStreak?`<div><span>Bonus série (jour ${d.streak})</span><b>+${b.bonusStreak}</b></div>`:''}
+      ${b.half?`<div><span>Liste faite le jour même</span><b>moitié</b></div>`:''}
+      <div><span>Série</span><b>${d.streak ? '🔥 '+d.streak : (d.prevStreak? '💀 perdue ('+d.prevStreak+')':'—')}</b></div>
+    </div>
+    <button class="btn primary" onclick="closeModal();go('tomorrow')">Planifier demain →</button>
+    <button class="btn ghost" onclick="closeModal()">Fermer</button>`);
+}
+function buySlot(){
+  const next = S.slots+1, cost = SLOT_COST[next];
+  if (!cost || S.wallet < cost) return;
+  confirmBox('Acheter un emplacement ?', `Emplacement n°${next} pour <b>${cost} pts</b>. Plus d'emplacements = plus de points possibles… mais une journée à 100 % plus dure à tenir si tu les remplis tous.`, 'Acheter', () => {
+    S.wallet -= cost; S.slots = next; S.purchases++;
+    const tm = S.days[tomorrow()];
+    if (tm && !tm.lockedAt) ensureDraft(tomorrow());
+    toast('🎒','EMPLACEMENT DÉBLOQUÉ', next+' tâches max'); commit();
+  });
+}
+
+/* ---------- check-in "toujours dessus ?" ---------- */
+function maybeCheckin(){
+  const c = S.current; if (!c) return;
+  const day = S.days[c.date];
+  if (c.date!==today() || !day || day.closed){ S.current=null; save(); return; }
+  const t = day.tasks.find(x=>x.id===c.id);
+  if (!t || t.done){ S.current=null; save(); return; }
+  const mins = Math.round((Date.now()-c.lastCheck)/60000);
+  if (mins < CHECKIN_MIN) return;
+  const total = Math.round((Date.now()-c.since)/60000);
+  modal(`<h2>Toujours dessus ?</h2>
+    <p>« <b style="color:var(--txt)">${esc(t.text)}</b> » — en cours depuis ${total>=60?Math.floor(total/60)+' h '+pad(total%60):total+' min'}.</p>
+    <button class="btn primary" onclick="ciDone()">✓ Terminée</button>
+    <button class="btn ghost" onclick="ciKeep()">Je continue</button>
+    <button class="btn ghost" onclick="ciSwitch()">Je change de tâche</button>
+    <button class="btn ghost" onclick="ciPause()">Pause / j'ai décroché</button>`);
+}
+function ciDone(){ closeModal(); toggleTask(S.current.id); }
+function ciKeep(){ S.current.lastCheck = Date.now(); closeModal(); commit(); }
+function ciSwitch(){ S.current = null; closeModal(); commit(); toast('🔁','CHANGEMENT','Choisis ta prochaine tâche ▸'); }
+function ciPause(){ S.current = null; closeModal(); commit(); }
+
+/* ---------- navigation ---------- */
+let tab = 'today', calCursor = null, calSel = null;
+function go(t){ tab = t; render(); window.scrollTo(0,0); }
+
+/* ---------- rendu ---------- */
+function renderHud(){
+  const L = level(S.xp), a = xpFor(L), b = xpFor(L+1), pct = Math.min(100, (S.xp-a)/(b-a)*100);
+  const st = currentStreak();
+  document.getElementById('hud').innerHTML = `
+    <div class="hud-row">
+      <span class="lvl">NIV ${L}</span>
+      <div class="xpbar"><i style="width:${pct}%"></i></div>
+      <span class="chip ${st?'mag':'dead'}">🔥${st}</span>
+      <span class="chip gold">◆${S.wallet}</span>
+      <button class="gear" onclick="go('settings')">⚙︎</button>
+    </div>
+    <div class="xptxt">${S.xp-a} / ${b-a} XP</div>`;
+}
+function ring(pct){
+  const r=26, c=2*Math.PI*r;
+  return `<svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${r}" fill="none" stroke="#2a2a38" stroke-width="7"/>
+    <circle cx="32" cy="32" r="${r}" fill="none" stroke="${pct===100?'#c8ff3e':'#ffc23e'}" stroke-width="7" stroke-linecap="round"
+    stroke-dasharray="${c}" stroke-dashoffset="${c*(1-pct/100)}" transform="rotate(-90 32 32)" style="transition:stroke-dashoffset .5s"/>
+    <text x="32" y="37" text-anchor="middle" fill="#ecebf3" font-family="ui-monospace,Menlo" font-weight="800" font-size="14">${pct}%</text></svg>`;
+}
+function editorHTML(date, sameDay){
+  const d = ensureDraft(date, sameDay);
+  let h = '';
+  for (let i=0;i<MAX_SLOTS;i++){
+    if (i < S.slots){
+      const t = d.tasks[i];
+      h += `<div class="slot"><span class="n">${i+1}</span><input maxlength="80" placeholder="${i===0?'Ex : 30 min de motion sur le projet X':'Tâche '+(i+1)}" value="${esc(t.text)}" oninput="editSlot('${date}',${i},this.value)"></div>`;
+    } else {
+      h += `<div class="lockline" onclick="go('shop')"><span class="n" style="font-family:var(--mono);font-size:13px;width:22px;text-align:right">${i+1}</span>🔒 Emplacement verrouillé · <span style="color:var(--gold)">${SLOT_COST[i+1]} pts</span></div>`;
+      break;
+    }
+  }
+  return h + `<div id="lockWarn" class="muted" style="display:none;color:var(--gold);margin:6px 0">Moins de ${MIN_TASKS_STREAK} tâches : la journée ne comptera pas pour la série.</div>
+    <button class="btn primary" id="lockBtn" style="margin-top:10px" onclick="lockDay('${date}')">🔒 Verrouiller ${sameDay?"aujourd'hui":'demain'}</button>
+    <p class="muted" style="text-align:center;margin-top:10px">Pas besoin de remplir tous les emplacements. Vise du réaliste.</p>`;
+}
+function renderToday(){
+  const t = today(), day = S.days[t], h = nowDate().getHours();
+  const tm = S.days[tomorrow()];
+  let out = `<h1>Aujourd'hui</h1><div class="sub">${nice(t)}</div>`;
+  if ((h >= 19 || h < DAY_START_HOUR) && !(tm && tm.lockedAt))
+    out += `<div class="banner warn" onclick="go('tomorrow')">🌙 <div><b>Demain n'est pas encore planifié.</b> Fais-le avant de dormir →</div></div>`;
+
+  if (!day || !day.lockedAt){
+    if (day && day.sameDay){
+      out += `<div class="banner info">⚠️ <div>Liste du jour même : <b>points ÷2</b> et <b>ne compte pas pour la série</b>.</div></div>` + editorHTML(t, true);
+    } else {
+      out += `<div class="card" style="text-align:center">
+        <div style="font-size:40px">🌑</div>
+        <b>Aucune liste verrouillée pour aujourd'hui.</b>
+        <p class="muted">La règle : la liste se fait la veille au soir. Tu peux quand même en faire une maintenant, mais les points sont divisés par deux et elle ne compte pas pour la série.</p>
+        <button class="btn ghost" onclick="ensureDraft('${t}',true);save();render()">Planifier aujourd'hui quand même</button>
+      </div>`;
+    }
+    return out;
+  }
+  const n = day.tasks.length, done = day.tasks.filter(x=>x.done).length, pct = n?Math.round(done/n*100):0;
+  if (day.closed){
+    out += `<div class="card"><div class="progress">${ring(day.pct)}<div class="ptxt"><b>+${day.pts} pts</b><span>Journée clôturée · ${day.streak?'🔥 série '+day.streak:'série à 0'}</span></div></div>
+      <button class="btn ghost" onclick='showSummary(S.days["${t}"])'>Voir le détail</button></div>`;
+  } else {
+    const st = currentStreak();
+    const pot = done*PTS_TASK;
+    out += `<div class="progress">${ring(pct)}<div class="ptxt"><b>${done} / ${n}</b><span>${pct===100?'Tout est fait. Clôture pour encaisser.':(st?`🔥 Série de ${st} en jeu — il faut 100 %`:'Fais 100 % pour lancer une série')}</span></div></div>`;
+    if (day.sameDay) out += `<div class="banner info">Liste du jour même : points ÷2, hors série.</div>`;
+  }
+  day.tasks.forEach(task => {
+    const cur = S.current && S.current.id===task.id;
+    out += `<div class="task ${task.done?'done':''} ${cur?'cur':''}">
+      <button class="box" ${day.closed?'disabled':''} onclick="toggleTask('${task.id}')">${task.done?'✓':''}</button>
+      <div class="ttxt">${cur?'<span class="tag">▶ EN COURS</span>':''}${esc(task.text)}</div>
+      ${(!day.closed && !task.done)?`<button class="focusbtn" onclick="setCurrent('${task.id}')">${cur?'■ stop':'▶ go'}</button>`:''}
+    </div>`;
+  });
+  if (!day.closed){
+    out += `<p class="muted" style="margin:8px 2px 14px">▶ go : marque la tâche sur laquelle tu bosses. L'app te demandera si tu es toujours dessus quand tu reviens.</p>
+      <button class="btn ${done===n?'primary':'ghost'}" onclick="closeToday()">Clôturer la journée</button>`;
+  }
+  return out;
+}
+function renderTomorrow(){
+  const d = tomorrow(), day = S.days[d];
+  let out = `<h1>Demain</h1><div class="sub">${nice(d)}</div>`;
+  if (day && day.lockedAt){
+    out += `<div class="banner info">🔒 <div><b>Liste verrouillée.</b> Plus de retour en arrière. Va dormir.</div></div>`;
+    day.tasks.forEach(t => out += `<div class="task"><span class="box" style="opacity:.4">🔒</span><div class="ttxt">${esc(t.text)}</div></div>`);
+    return out;
+  }
+  out += `<div class="sub" style="margin-top:-8px">${S.slots} emplacement${S.slots>1?'s':''} disponible${S.slots>1?'s':''}. Ce que tu verrouilles ce soir, tu le fais demain.</div>`;
+  return out + editorHTML(d, false);
+}
+function renderCalendar(){
+  const t = today();
+  if (!calCursor) calCursor = t.slice(0,7);
+  const [y,m] = calCursor.split('-').map(Number);
+  const first = new Date(y,m-1,1), dim = new Date(y,m,0).getDate();
+  const offset = (first.getDay()+6)%7;
+  let cells = ['L','M','M','J','V','S','D'].map(x=>`<div class="dow">${x}</div>`).join('');
+  for (let i=0;i<offset;i++) cells += `<div class="cell empty"></div>`;
+  let full=0, closed=0;
+  for (let dd=1; dd<=dim; dd++){
+    const ds = `${y}-${pad(m)}-${pad(dd)}`, day = S.days[ds];
+    let cls = 'cell', sub = '';
+    if (day && day.closed){ closed++; if (day.full){cls+=' full';full++;} else if (day.done>0) cls+=' part'; else cls+=' zero'; sub = `<small>${day.pct}%</small>`; }
+    else if (day && day.lockedAt) sub = '<small>🔒</small>';
+    if (ds===t) cls+=' today';
+    if (ds===calSel) cls+=' sel';
+    cells += `<button class="${cls}" onclick="calSel='${ds}';render()">${dd}${sub}</button>`;
+  }
+  let detail = '';
+  if (calSel){
+    const day = S.days[calSel];
+    detail = `<div class="section-t">${nice(calSel)}</div>`;
+    if (!day || !day.lockedAt) detail += `<p class="muted">Aucune liste.</p>`;
+    else {
+      day.tasks.forEach(x => detail += `<div class="task ${x.done&&day.closed?'done':''}"><span class="box">${day.closed?(x.done?'✓':'✗'):'🔒'}</span><div class="ttxt">${esc(x.text)}</div></div>`);
+      if (day.closed) detail += `<p class="muted">${day.pct}% · +${day.pts} pts · ${day.streak?'🔥 série '+day.streak:'série 0'}${day.auto?' · clôturée automatiquement':''}${day.sameDay?' · faite le jour même':''}</p>`;
+    }
+  }
+  return `<h1>Calendrier</h1><div class="sub">${S.stats.fullDays} journée${S.stats.fullDays>1?'s':''} parfaite${S.stats.fullDays>1?'s':''} · record de série : ${S.stats.bestStreak}</div>
+    <div class="card"><div class="calhead"><button onclick="calMove(-1)">‹</button><b>${MONTHS[m-1]} ${y}</b><button onclick="calMove(1)">›</button></div>
+    <div class="grid">${cells}</div>
+    <div class="legend"><span><i style="background:var(--acid)"></i>100 %</span><span><i style="background:rgba(255,194,62,.5)"></i>partiel</span><span><i style="background:rgba(255,90,78,.5)"></i>0 %</span></div>
+    ${closed?`<p class="muted" style="margin:10px 0 0">Ce mois : ${full}/${closed} jours parfaits</p>`:''}</div>${detail}`;
+}
+function calMove(n){ let [y,m] = calCursor.split('-').map(Number); m+=n; if(m<1){m=12;y--} if(m>12){m=1;y++} calCursor = `${y}-${pad(m)}`; calSel=null; render(); }
+function renderShop(){
+  const next = S.slots+1, cost = SLOT_COST[next];
+  let out = `<h1>Boutique</h1><div class="sub">Tu as <b style="color:var(--gold)">◆ ${S.wallet}</b> points.</div>
+    <div class="card item"><div class="ic">🎒</div><div class="info"><b>Emplacement de tâche</b>
+      <span>${cost?`Passe de ${S.slots} à ${next} tâches par jour.`:'Tous les emplacements sont débloqués.'}</span></div>
+      ${cost?`<button class="buy" ${S.wallet<cost?'disabled':''} onclick="buySlot()">◆ ${cost}</button>`:'<span class="chip gold">MAX</span>'}</div>
+    <div class="section-t">Progression des emplacements</div><div class="card">`;
+  for (let i=1;i<=MAX_SLOTS;i++) out += `<span style="display:inline-block;width:11%;text-align:center;font-size:20px;opacity:${i<=S.slots?1:.25}">${i<=S.slots?'🟩':'⬛'}</span>`;
+  out += `<p class="muted" style="margin:8px 0 0">5ᵉ : 200 · 6ᵉ : 400 · 7ᵉ : 700 · 8ᵉ : 1100</p></div>
+    <div class="section-t">Barème</div><div class="card lines">
+      <div><span>Tâche accomplie</span><b>+${PTS_TASK}</b></div>
+      <div><span>Journée à 100 %</span><b>+${PTS_FULL}</b></div>
+      <div><span>Bonus série (par jour, max ${STREAK_CAP})</span><b>+${PTS_STREAK_STEP}/jour</b></div>
+      <div><span>Liste faite le jour même</span><b>moitié, hors série</b></div>
+      <div><span>Série valable si</span><b>≥ ${MIN_TASKS_STREAK} tâches et 100 %</b></div>
+    </div>`;
+  return out;
+}
+function renderAch(){
+  const got = ACH.filter(a=>S.achievements[a.id]).length;
+  let out = `<h1>Succès</h1><div class="sub">${got} / ${ACH.length} débloqués</div>`;
+  const sorted = [...ACH].sort((a,b)=>(!!S.achievements[b.id])-(!!S.achievements[a.id]));
+  sorted.forEach(a => { const g = S.achievements[a.id];
+    out += `<div class="ach ${g?'got':'lock'}"><div class="ic">${a.ic}</div><div><b>${a.name}</b><span>${a.desc}${g?' · '+g.split('-').reverse().join('/'):''}</span></div><span class="rw">+${a.rw}</span></div>`; });
+  return out;
+}
+function renderSettings(){
+  return `<h1>Réglages</h1><div class="sub">Tout est stocké sur ce téléphone uniquement.</div>
+  <div class="section-t">Notifications (Raccourcis iOS)</div>
+  <div class="card guide">
+    <p class="muted" style="margin-top:0">Une web app ne peut pas programmer seule des rappels. C'est l'app <b>Raccourcis</b> d'Apple qui les envoie. À régler une seule fois.</p>
+    <b>Rappel du soir — 22:00</b>
+    <ol>
+      <li>Raccourcis → onglet <code>Automatisation</code> → <code>+</code> → <code>Heure de la journée</code></li>
+      <li>Heure <code>22:00</code>, <code>Quotidiennement</code>, choisir <code>Exécuter immédiatement</code></li>
+      <li>Action : <code>Afficher une notification</code> → « 🌙 Verrouille ta liste de demain »</li>
+    </ol>
+    <b>Relances en journée</b>
+    <ol>
+      <li>Même chose, une automatisation par horaire (ex : <code>10:00</code>, <code>11:30</code>, <code>14:00</code>, <code>15:30</code>, <code>17:00</code>)</li>
+      <li>Choisir les jours : <code>Hebdomadairement</code> → seulement tes jours de boulot si tu veux</li>
+      <li>Message : « ▶ Toujours sur ta tâche ? Ouvre GRIND »</li>
+    </ol>
+    <p class="muted">Quand tu ouvres l'app après une relance, elle te pose la question pour ta tâche « en cours ».</p>
+  </div>
+  <div class="section-t">Sauvegarde</div>
+  <div class="card">
+    <p class="muted" style="margin-top:0">Si tu supprimes l'app de l'écran d'accueil, les données partent avec. Exporte de temps en temps et colle le texte dans Notes.</p>
+    <button class="btn ghost" onclick="exportData()">Exporter</button>
+    <button class="btn ghost" style="margin-top:8px" onclick="importData()">Importer</button>
+  </div>
+  <div class="section-t">Zone dangereuse</div>
+  <button class="btn danger" onclick="confirmBox('Tout effacer ?','Points, succès, historique : tout disparaît. Irréversible.','Tout effacer',()=>{localStorage.removeItem(KEY);load();go('today')},true)">Réinitialiser</button>
+  <p class="muted" style="text-align:center;margin:20px 0">GRIND · la journée bascule à ${DAY_START_HOUR}h du matin</p>`;
+}
+function exportData(){
+  modal(`<h2>Export</h2><p>Copie ce texte et garde-le (Notes, mail à toi-même).</p><textarea class="dump" id="dump" readonly>${esc(JSON.stringify(S))}</textarea>
+    <button class="btn primary" onclick="const t=document.getElementById('dump');t.select();navigator.clipboard?navigator.clipboard.writeText(t.value).then(()=>toast('📋','COPIÉ','Sauvegarde dans le presse-papier')):document.execCommand('copy')">Copier</button>
+    <button class="btn ghost" onclick="closeModal()">Fermer</button>`);
+}
+function importData(){
+  modal(`<h2>Import</h2><p>Colle une sauvegarde. Ça remplace tout ce qu'il y a dans l'app.</p><textarea class="dump" id="dump"></textarea>
+    <button class="btn primary" onclick="doImport()">Importer</button><button class="btn ghost" onclick="closeModal()">Annuler</button>`);
+}
+function doImport(){
+  try { const o = JSON.parse(document.getElementById('dump').value); if(!o.days) throw 0;
+    S = Object.assign(defaultState(), o); save(); closeModal(); toast('✅','IMPORT','Données restaurées'); render(); }
+  catch(e){ toast('⚠️','ERREUR','Texte invalide'); }
+}
+function renderTabs(){
+  const tm = S.days[tomorrow()], h = nowDate().getHours();
+  const needPlan = !(tm && tm.lockedAt) && (h>=19 || h<DAY_START_HOUR);
+  const T = [['today','⚔️',"Aujourd'hui"],['tomorrow','🌙','Demain'],['calendar','📅','Calendrier'],['shop','🛒','Boutique'],['ach','🏆','Succès']];
+  document.getElementById('tabs').innerHTML = T.map(([id,i,l]) =>
+    `<button class="tab ${tab===id?'on':''}" onclick="go('${id}')"><span class="i">${i}</span>${l}${id==='tomorrow'&&needPlan?'<span class="dot"></span>':''}</button>`).join('');
+}
+function render(){
+  renderHud(); renderTabs();
+  const m = document.getElementById('main');
+  m.innerHTML = {today:renderToday, tomorrow:renderTomorrow, calendar:renderCalendar, shop:renderShop, ach:renderAch, settings:renderSettings}[tab]();
+  if (tab==='tomorrow') updateLockBtn(tomorrow());
+  if (tab==='today') updateLockBtn(today());
+}
+
+/* ---------- boot ---------- */
+let lastDay;
+function tick(){
+  const t = today();
+  if (t !== lastDay){ lastDay = t; autoClose(); checkAch(); save(); render(); }
+}
+function boot(){
+  load(); lastDay = today(); autoClose(); checkAch(); save(); render(); maybeCheckin();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden){ tick(); maybeCheckin(); } });
+  setInterval(tick, 60000);
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
+  try { if ('serviceWorker' in navigator && location.protocol==='https:' && window.top===window.self) navigator.serviceWorker.register('sw.js').catch(()=>{}); } catch(e){}
+}
+if (!window.__TEST) boot();
+</script>
+</body>
+</html>
